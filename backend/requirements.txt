@@ -9,7 +9,7 @@ pydantic-settings
 python-jose[cryptography]
 passlib[bcrypt]
 httpx
-openai
+google-genai
 pinecone
 razorpay
 twilio

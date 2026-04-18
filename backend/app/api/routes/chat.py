@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from openai import APIError, AuthenticationError, RateLimitError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -26,12 +25,11 @@ def chat_query(
             query=payload.query,
             session_id=payload.session_id,
         )
-    except RateLimitError as exc:
-        raise HTTPException(status_code=429, detail="OpenAI quota exceeded. Please update billing/quota.") from exc
-    except AuthenticationError as exc:
-        raise HTTPException(status_code=401, detail="OpenAI authentication failed. Check OPENAI_API_KEY.") from exc
-    except APIError as exc:
-        raise HTTPException(status_code=502, detail=f"OpenAI API error: {exc}") from exc
     except Exception as exc:
+        msg = str(exc)
+        if "API key" in msg or "api_key" in msg:
+            raise HTTPException(status_code=401, detail="Gemini authentication failed. Check GEMINI_API_KEY.") from exc
+        if "quota" in msg.lower() or "429" in msg:
+            raise HTTPException(status_code=429, detail="Gemini quota exceeded. Check billing/quota.") from exc
         raise HTTPException(status_code=500, detail=f"Chat processing failed: {exc}") from exc
     return ChatQueryResponse(session_id=session_id, answer=answer, tokens_used=used, remaining_tokens=remaining)

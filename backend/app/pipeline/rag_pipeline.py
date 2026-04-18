@@ -1,4 +1,4 @@
-from openai import OpenAI
+from google import genai
 from pinecone import Pinecone
 
 from app.core.config import settings
@@ -6,13 +6,16 @@ from app.core.config import settings
 
 class RagPipeline:
     def __init__(self) -> None:
-        self.openai = OpenAI(api_key=settings.openai_api_key)
+        self.gemini = genai.Client(api_key=settings.gemini_api_key)
         self.pc = Pinecone(api_key=settings.pinecone_api_key)
         self.index = self.pc.Index(settings.pinecone_index)
 
     def answer(self, query: str, subject: str) -> tuple[str, int, int, int]:
-        emb = self.openai.embeddings.create(model=settings.openai_embed_model, input=query)
-        vector = emb.data[0].embedding
+        emb = self.gemini.models.embed_content(
+            model=settings.gemini_embed_model,
+            contents=[query],
+        )
+        vector = emb.embeddings[0].values
         res = self.index.query(
             vector=vector,
             top_k=settings.pinecone_top_k,
@@ -28,16 +31,10 @@ class RagPipeline:
             "If the answer is missing, say: 'This is not available in provided material.'"
         )
         user_prompt = f"Context:\n{context_blob}\n\nQuestion:\n{query}"
-        chat = self.openai.chat.completions.create(
-            model=settings.openai_chat_model,
-            messages=[
-                {"role": "system", "content": sys_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
+        resp = self.gemini.models.generate_content(
+            model=settings.gemini_model,
+            contents=[sys_prompt, user_prompt],
         )
-        content = chat.choices[0].message.content or "This is not available in provided material."
-        usage = chat.usage
-        prompt_tokens = usage.prompt_tokens if usage else 0
-        completion_tokens = usage.completion_tokens if usage else 0
-        total_tokens = usage.total_tokens if usage else 0
-        return content, prompt_tokens, completion_tokens, total_tokens
+        content = (resp.text or "").strip() or "This is not available in provided material."
+        # Gemini response doesn't always provide token usage in this SDK.
+        return content, 0, 0, 0

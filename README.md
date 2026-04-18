@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# 10th-PU-helper
-=======
 # AI Student Chatbot Platform
 
 Production-ready architecture with `Next.js` frontend and `FastAPI` backend.
@@ -46,7 +43,7 @@ backend/
       chat_service.py        # chat orchestration + token enforcement
       payment_service.py     # Razorpay create/verify + idempotent crediting
     pipeline/
-      rag_pipeline.py        # OpenAI embeddings + Pinecone retrieval + strict-context answer
+      rag_pipeline.py        # Gemini embeddings + Pinecone retrieval + strict-context answer
     models/
       entities.py            # SQLAlchemy models
     schemas/
@@ -119,4 +116,3 @@ npm run dev
 - Token wallet starts at `1000` and blocks chat with `402 PAYMENT_REQUIRED` at zero balance.
 - Razorpay verification is server-side and idempotent by `razorpay_payment_id`.
 - RAG response is constrained to Pinecone-retrieved context.
->>>>>>> 6aaa4eb (Initial commit)

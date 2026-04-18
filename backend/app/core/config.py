@@ -14,9 +14,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 1440
 
-    openai_api_key: str
-    openai_chat_model: str = "gpt-4o-mini"
-    openai_embed_model: str = "text-embedding-3-small"
+    gemini_api_key: str
+    gemini_model: str = "gemini-1.5-flash"
+    gemini_embed_model: str = "text-embedding-004"
 
     pinecone_api_key: str
     pinecone_index: str
