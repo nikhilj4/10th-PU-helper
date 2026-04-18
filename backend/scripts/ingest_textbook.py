@@ -82,7 +82,7 @@ def _iter_chunks(subject: str, source: str, raw_text: str) -> Iterable[Chunk]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest textbook (PDF/TXT) into Pinecone for RAG.")
     parser.add_argument("--subject", required=True, help="Subject name (must match frontend subject value).")
-    parser.add_argument("--file", required=True, help="Path to a .pdf or .txt file.")
+    parser.add_argument("--file", required=True, nargs="+", help="One or more paths to .pdf/.txt files.")
     parser.add_argument("--namespace", default=os.getenv("PINECONE_NAMESPACE", "default"))
     parser.add_argument("--batch", type=int, default=50)
     args = parser.parse_args()
@@ -103,39 +103,45 @@ def main() -> None:
     pc = Pinecone(api_key=pinecone_api_key)
     index = pc.Index(pinecone_index)
 
-    path = args.file
-    if path.lower().endswith(".pdf"):
-        raw = _read_pdf(path)
-    else:
-        raw = _read_txt(path)
-
-    chunks = list(_iter_chunks(subject=args.subject, source=os.path.basename(path), raw_text=raw))
-    if not chunks:
-        raise SystemExit("No text extracted/chunked from file.")
-
     vectors: list[dict] = []
-    for c in chunks:
-        emb = client.models.embed_content(model=embed_model, contents=[c.text])
-        vec = emb.embeddings[0].values
-        vectors.append(
-            {
-                "id": c.id,
-                "values": vec,
-                "metadata": {
-                    "subject": c.subject,
-                    "source": c.source,
-                    "chunk_index": c.chunk_index,
-                    "text": c.text,
-                },
-            }
-        )
+    total_chunks = 0
+    for path in args.file:
+        if path.lower().endswith(".pdf"):
+            raw = _read_pdf(path)
+        else:
+            raw = _read_txt(path)
+
+        chunks = list(_iter_chunks(subject=args.subject, source=os.path.basename(path), raw_text=raw))
+        if not chunks:
+            print(f"Skipped (no text extracted): {path}")
+            continue
+
+        for c in chunks:
+            emb = client.models.embed_content(model=embed_model, contents=[c.text])
+            vec = emb.embeddings[0].values
+            vectors.append(
+                {
+                    "id": c.id,
+                    "values": vec,
+                    "metadata": {
+                        "subject": c.subject,
+                        "source": c.source,
+                        "chunk_index": c.chunk_index,
+                        "text": c.text,
+                    },
+                }
+            )
+        total_chunks += len(chunks)
+
+    if not vectors:
+        raise SystemExit("No text extracted/chunked from provided files.")
 
     # Upsert in batches
     for i in range(0, len(vectors), args.batch):
         index.upsert(vectors=vectors[i : i + args.batch], namespace=args.namespace)
         print(f"Upserted {min(i + args.batch, len(vectors))}/{len(vectors)}")
 
-    print("Done.")
+    print(f"Done. Total chunks: {total_chunks}")
 
 
 if __name__ == "__main__":
