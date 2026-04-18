@@ -103,6 +103,24 @@ def main() -> None:
     pc = Pinecone(api_key=pinecone_api_key)
     index = pc.Index(pinecone_index)
 
+    def embed_with_fallback(text: str) -> list[float]:
+        candidates = [
+            embed_model,
+            "gemini-embedding-001",
+            "gemini-embedding-2-preview",
+        ]
+        last_exc: Exception | None = None
+        for model in candidates:
+            try:
+                emb = client.models.embed_content(model=model, contents=[text])
+                return emb.embeddings[0].values
+            except Exception as exc:
+                last_exc = exc
+                continue
+        if last_exc:
+            raise last_exc
+        raise RuntimeError("Embedding failed with all fallback models.")
+
     vectors: list[dict] = []
     total_chunks = 0
     for path in args.file:
@@ -117,8 +135,7 @@ def main() -> None:
             continue
 
         for c in chunks:
-            emb = client.models.embed_content(model=embed_model, contents=[c.text])
-            vec = emb.embeddings[0].values
+            vec = embed_with_fallback(c.text)
             vectors.append(
                 {
                     "id": c.id,
@@ -139,9 +156,9 @@ def main() -> None:
     # Upsert in batches
     for i in range(0, len(vectors), args.batch):
         index.upsert(vectors=vectors[i : i + args.batch], namespace=args.namespace)
-        print(f"Upserted {min(i + args.batch, len(vectors))}/{len(vectors)}")
+        print(f"Upserted {min(i + args.batch, len(vectors))}/{len(vectors)}", flush=True)
 
-    print(f"Done. Total chunks: {total_chunks}")
+    print(f"Done. Total chunks: {total_chunks}", flush=True)
 
 
 if __name__ == "__main__":

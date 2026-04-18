@@ -96,6 +96,22 @@ source .venv/bin/activate
 python scripts/ingest_textbook.py --subject "Mathematics" --file "./data/math.pdf"
 ```
 
+### Ingest everything in `backend/data/` (auto-subject from filename)
+
+If you renamed files by subject (example: `Mathematics.pdf`, `Physics.pdf`), run:
+
+```bash
+cd backend
+source .venv/bin/activate
+python scripts/ingest_data_folder.py
+```
+
+If you don't see progress output, run unbuffered:
+
+```bash
+PYTHONUNBUFFERED=1 python scripts/ingest_data_folder.py
+```
+
 ### 2) Frontend
 
 ```bash

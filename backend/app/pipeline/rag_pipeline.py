@@ -32,12 +32,26 @@ class RagPipeline:
             raise last_exc
         return ""
 
+    def _embed_with_fallback(self, text: str) -> list[float]:
+        candidates = [
+            settings.gemini_embed_model,
+            "gemini-embedding-001",
+            "gemini-embedding-2-preview",
+        ]
+        last_exc: Exception | None = None
+        for model in candidates:
+            try:
+                emb = self.gemini.models.embed_content(model=model, contents=[text])
+                return emb.embeddings[0].values
+            except Exception as exc:
+                last_exc = exc
+                continue
+        if last_exc:
+            raise last_exc
+        raise RuntimeError("Embedding failed with all fallback models.")
+
     def answer(self, query: str, subject: str) -> tuple[str, int, int, int]:
-        emb = self.gemini.models.embed_content(
-            model=settings.gemini_embed_model,
-            contents=[query],
-        )
-        vector = emb.embeddings[0].values
+        vector = self._embed_with_fallback(query)
         res = self.index.query(
             vector=vector,
             top_k=settings.pinecone_top_k,
