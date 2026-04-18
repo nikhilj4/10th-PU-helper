@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: str
     gemini_model: str = "gemini-1.5-flash"
-    gemini_embed_model: str = "text-embedding-004"
+    gemini_embed_model: str = "gemini-embedding-001"
 
     pinecone_api_key: str
     pinecone_index: str
