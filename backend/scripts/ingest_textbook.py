@@ -59,8 +59,13 @@ def _chunk_text(text: str, target_chars: int = 1500, overlap_chars: int = 200) -
 def _read_pdf(path: str) -> str:
     try:
         import pypdf  # type: ignore
+        import pypdf.filters  # type: ignore
     except Exception as exc:
         raise RuntimeError("Missing dependency pypdf. Install it in backend venv: pip install pypdf") from exc
+
+    # Some textbooks legitimately exceed pypdf's default FlateDecode output limit.
+    # For trusted local files, disable the limit to allow extraction.
+    pypdf.filters.ZLIB_MAX_OUTPUT_LENGTH = 0
 
     reader = pypdf.PdfReader(path)
     parts: list[str] = []
