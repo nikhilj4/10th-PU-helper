@@ -84,6 +84,18 @@ python -m app.db.init_db
 uvicorn app.main:app --reload --port 8000
 ```
 
+## Add Textbooks (RAG Knowledge Base)
+
+1. Put PDFs or text files anywhere (example: `backend/data/`).
+2. Ensure backend env has `GEMINI_API_KEY`, `PINECONE_API_KEY`, `PINECONE_INDEX`, and `GEMINI_EMBED_MODEL=gemini-embedding-001`.
+3. Ingest a book into Pinecone:
+
+```bash
+cd backend
+source .venv/bin/activate
+python scripts/ingest_textbook.py --subject "Mathematics" --file "./data/math.pdf"
+```
+
 ### 2) Frontend
 
 ```bash

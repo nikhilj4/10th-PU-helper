@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 1440
 
     gemini_api_key: str
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-2.0-flash"
     gemini_embed_model: str = "gemini-embedding-001"
 
     pinecone_api_key: str

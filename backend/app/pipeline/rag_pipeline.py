@@ -10,6 +10,28 @@ class RagPipeline:
         self.pc = Pinecone(api_key=settings.pinecone_api_key)
         self.index = self.pc.Index(settings.pinecone_index)
 
+    def _generate_with_fallback(self, sys_prompt: str, user_prompt: str) -> str:
+        # Model availability changes frequently; keep a small fallback chain.
+        candidates = [
+            settings.gemini_model,
+            "gemini-flash-latest",
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+        ]
+        last_exc: Exception | None = None
+        for model in candidates:
+            try:
+                resp = self.gemini.models.generate_content(model=model, contents=[sys_prompt, user_prompt])
+                text = (resp.text or "").strip()
+                if text:
+                    return text
+            except Exception as exc:
+                last_exc = exc
+                continue
+        if last_exc:
+            raise last_exc
+        return ""
+
     def answer(self, query: str, subject: str) -> tuple[str, int, int, int]:
         emb = self.gemini.models.embed_content(
             model=settings.gemini_embed_model,
@@ -31,10 +53,7 @@ class RagPipeline:
             "If the answer is missing, say: 'This is not available in provided material.'"
         )
         user_prompt = f"Context:\n{context_blob}\n\nQuestion:\n{query}"
-        resp = self.gemini.models.generate_content(
-            model=settings.gemini_model,
-            contents=[sys_prompt, user_prompt],
-        )
-        content = (resp.text or "").strip() or "This is not available in provided material."
+        content = self._generate_with_fallback(sys_prompt=sys_prompt, user_prompt=user_prompt)
+        content = content or "This is not available in provided material."
         # Gemini response doesn't always provide token usage in this SDK.
         return content, 0, 0, 0

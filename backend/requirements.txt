@@ -13,3 +13,4 @@ google-genai
 pinecone
 razorpay
 twilio
+pypdf
