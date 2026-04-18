@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from google import genai
+from google.genai import types
 from pinecone import Pinecone
 
 
@@ -102,6 +103,10 @@ def main() -> None:
     client = genai.Client(api_key=gemini_api_key)
     pc = Pinecone(api_key=pinecone_api_key)
     index = pc.Index(pinecone_index)
+    try:
+        index_dimension = int(pc.describe_index(pinecone_index).dimension or 0)
+    except Exception:
+        index_dimension = 0
 
     def embed_with_fallback(text: str) -> list[float]:
         candidates = [
@@ -112,7 +117,10 @@ def main() -> None:
         last_exc: Exception | None = None
         for model in candidates:
             try:
-                emb = client.models.embed_content(model=model, contents=[text])
+                config = None
+                if index_dimension > 0:
+                    config = types.EmbedContentConfig(output_dimensionality=index_dimension)
+                emb = client.models.embed_content(model=model, contents=[text], config=config)
                 return emb.embeddings[0].values
             except Exception as exc:
                 last_exc = exc

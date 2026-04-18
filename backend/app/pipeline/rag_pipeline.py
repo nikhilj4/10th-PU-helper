@@ -1,4 +1,5 @@
 from google import genai
+from google.genai import types
 from pinecone import Pinecone
 
 from app.core.config import settings
@@ -9,6 +10,10 @@ class RagPipeline:
         self.gemini = genai.Client(api_key=settings.gemini_api_key)
         self.pc = Pinecone(api_key=settings.pinecone_api_key)
         self.index = self.pc.Index(settings.pinecone_index)
+        try:
+            self.index_dimension = int(self.pc.describe_index(settings.pinecone_index).dimension or 0)
+        except Exception:
+            self.index_dimension = 0
 
     def _generate_with_fallback(self, sys_prompt: str, user_prompt: str) -> str:
         # Model availability changes frequently; keep a small fallback chain.
@@ -41,7 +46,10 @@ class RagPipeline:
         last_exc: Exception | None = None
         for model in candidates:
             try:
-                emb = self.gemini.models.embed_content(model=model, contents=[text])
+                config = None
+                if self.index_dimension > 0:
+                    config = types.EmbedContentConfig(output_dimensionality=self.index_dimension)
+                emb = self.gemini.models.embed_content(model=model, contents=[text], config=config)
                 return emb.embeddings[0].values
             except Exception as exc:
                 last_exc = exc
