@@ -135,6 +135,7 @@ def main() -> None:
         raise RuntimeError("Embedding failed with all fallback models.")
 
     vectors: list[dict] = []
+    upserted = 0
     total_chunks = 0
     for path in args.file:
         if path.lower().endswith(".pdf"):
@@ -161,17 +162,22 @@ def main() -> None:
                     },
                 }
             )
+            if len(vectors) >= args.batch:
+                index.upsert(vectors=vectors, namespace=args.namespace)
+                upserted += len(vectors)
+                vectors = []
+                print(f"Upserted {upserted} chunks so far", flush=True)
         total_chunks += len(chunks)
 
-    if not vectors:
+    if total_chunks == 0:
         raise SystemExit("No text extracted/chunked from provided files.")
 
-    # Upsert in batches
-    for i in range(0, len(vectors), args.batch):
-        index.upsert(vectors=vectors[i : i + args.batch], namespace=args.namespace)
-        print(f"Upserted {min(i + args.batch, len(vectors))}/{len(vectors)}", flush=True)
+    if vectors:
+        index.upsert(vectors=vectors, namespace=args.namespace)
+        upserted += len(vectors)
+        vectors = []
 
-    print(f"Done. Total chunks: {total_chunks}", flush=True)
+    print(f"Done. Total chunks: {total_chunks}. Upserted: {upserted}.", flush=True)
 
 
 if __name__ == "__main__":
